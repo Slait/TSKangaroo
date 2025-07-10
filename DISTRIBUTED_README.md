@@ -79,24 +79,119 @@ python kangaroo_server.py [опции]
 
 ### Установка клиента
 
-#### Требования
+#### Для Linux
+
+##### Требования
 - CUDA Toolkit 11.x+
 - g++
 - libjsoncpp-dev
 - libcurl4-openssl-dev
 
-#### Установка зависимостей (Ubuntu/Debian)
+##### Установка зависимостей (Ubuntu/Debian)
 ```bash
 sudo apt-get update
 sudo apt-get install build-essential
 sudo apt-get install libjsoncpp-dev libcurl4-openssl-dev
 ```
 
-#### Сборка клиента
+##### Сборка клиента
 ```bash
 cd client
 make deps   # Проверить зависимости
 make        # Собрать
+```
+
+#### Для Windows
+
+##### Требования
+- Windows 10/11 x64
+- Visual Studio 2019 или 2022 (Community/Professional/Enterprise)
+- CUDA Toolkit 11.8+ (рекомендуется 12.x)
+- Git для Windows
+
+##### Автоматическая установка (рекомендуется)
+
+1. **Запустите PowerShell или CMD от имени администратора**
+
+2. **Скачайте и установите зависимости:**
+```cmd
+cd client
+setup_windows.bat
+```
+
+Этот скрипт автоматически:
+- Проверит наличие Visual Studio и CUDA
+- Установит vcpkg менеджер пакетов
+- Скачает и скомпилирует libcurl и jsoncpp
+- Настроит переменные окружения
+
+3. **Соберите проект:**
+```cmd
+build_windows.bat
+```
+
+Или откройте `RCKangarooClient.sln` в Visual Studio и соберите вручную.
+
+##### Ручная установка
+
+1. **Установите Visual Studio 2019/2022**
+   - Скачайте с https://visualstudio.microsoft.com/
+   - Выберите "Desktop development with C++" workload
+   - Убедитесь, что установлены MSVC compiler и Windows SDK
+
+2. **Установите CUDA Toolkit**
+   ```
+   Скачайте с: https://developer.nvidia.com/cuda-downloads
+   Выберите: Windows → x86_64 → 10/11 → exe (local)
+   ```
+
+3. **Установите vcpkg (менеджер пакетов)**
+   ```cmd
+   cd C:\
+   git clone https://github.com/Microsoft/vcpkg.git
+   cd vcpkg
+   bootstrap-vcpkg.bat
+   vcpkg integrate install
+   ```
+
+4. **Установите зависимости через vcpkg**
+   ```cmd
+   vcpkg install curl:x64-windows
+   vcpkg install jsoncpp:x64-windows
+   ```
+
+5. **Настройте переменные окружения**
+   ```cmd
+   setx VCPKG_ROOT "C:\vcpkg" /M
+   setx CUDA_PATH "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" /M
+   ```
+
+6. **Соберите проект**
+   - Откройте `client\RCKangarooClient.sln` в Visual Studio
+   - Выберите конфигурацию "Release" и платформу "x64"
+   - Build → Build Solution (Ctrl+Shift+B)
+
+   Или из командной строки:
+   ```cmd
+   cd client
+   build_windows.bat
+   ```
+
+##### Файлы проекта Windows
+- `RCKangarooClient.sln` - Solution файл
+- `RCKangarooClient.vcxproj` - Файл проекта
+- `setup_windows.bat` - Автоматическая установка зависимостей
+- `build_windows.bat` - Автоматическая сборка проекта
+
+##### Результат сборки
+```
+client\x64\Release\RCKangarooClient.exe  - Исполняемый файл
+```
+
+##### Тестирование Windows сборки
+```cmd
+cd client\x64\Release
+RCKangarooClient.exe -server http://localhost:8080
 ```
 
 ### Настройка поиска
@@ -181,6 +276,7 @@ make        # Собрать
 
 ### 1. Простой поиск (тест)
 
+#### Linux
 ```bash
 # Сервер
 python kangaroo_server.py
@@ -193,6 +289,23 @@ python kangaroo_server.py
 
 # Клиент
 ./RCKangarooClient -server http://localhost:8080
+```
+
+#### Windows
+```cmd
+# Сервер (в отдельном CMD окне)
+cd server
+python kangaroo_server.py
+
+# Настройка (в другом CMD окне)
+cd client\x64\Release
+RCKangarooClient.exe -server http://localhost:8080 -configure ^
+  0x200000000000000000 0x400000000000000000 ^
+  0290e6900a58d33393bc1097b5aed31f2e4e7cbd3e5466af958665bc0121248483 ^
+  14 0x10000000000000
+
+# Клиент
+RCKangarooClient.exe -server http://localhost:8080
 ```
 
 ### 2. Крупномасштабный поиск
@@ -252,6 +365,8 @@ done
 ## Устранение неполадок
 
 ### Сервер не запускается
+
+#### Linux
 ```bash
 # Проверить порт
 netstat -tulpn | grep 8080
@@ -261,7 +376,18 @@ ls -la kangaroo_server.db
 chmod 666 kangaroo_server.db
 ```
 
+#### Windows
+```cmd
+# Проверить порт
+netstat -an | findstr 8080
+
+# Проверить файрвол Windows
+netsh advfirewall firewall show rule name="Python"
+```
+
 ### Клиент не подключается
+
+#### Linux
 ```bash
 # Проверить доступность сервера
 curl http://server:8080/api/status
@@ -270,7 +396,73 @@ curl http://server:8080/api/status
 telnet server 8080
 ```
 
+#### Windows
+```cmd
+# Проверить доступность сервера
+curl http://server:8080/api/status
+
+# Или через PowerShell
+Invoke-WebRequest -Uri http://server:8080/api/status
+
+# Проверить подключение
+telnet server 8080
+```
+
+### Ошибки компиляции Windows
+
+#### CUDA не найден
+```cmd
+# Установить переменную CUDA_PATH
+setx CUDA_PATH "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6" /M
+
+# Или добавить в PATH
+setx PATH "%PATH%;%CUDA_PATH%\bin" /M
+```
+
+#### vcpkg библиотеки не найдены
+```cmd
+# Переустановить интеграцию vcpkg
+cd C:\vcpkg
+vcpkg integrate install
+
+# Установить переменную VCPKG_ROOT
+setx VCPKG_ROOT "C:\vcpkg" /M
+
+# Переустановить библиотеки
+vcpkg remove curl:x64-windows jsoncpp:x64-windows
+vcpkg install curl:x64-windows jsoncpp:x64-windows
+```
+
+#### Ошибки линковщика
+```
+Ошибка: LNK2001: unresolved external symbol
+```
+
+**Решение:**
+1. Убедитесь, что все .lib файлы найдены:
+   ```cmd
+   dir "%VCPKG_ROOT%\installed\x64-windows\lib\*.lib"
+   ```
+
+2. Проверьте настройки проекта:
+   - Configuration Properties → VC++ Directories → Library Directories
+   - Configuration Properties → Linker → Input → Additional Dependencies
+
+#### Ошибки CUDA компилятора
+```
+nvcc fatal: Cannot find compiler 'cl.exe'
+```
+
+**Решение:**
+1. Запустите Visual Studio Developer Command Prompt
+2. Или добавьте MSVC в PATH:
+   ```cmd
+   call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+   ```
+
 ### Низкая производительность
+
+#### Linux/Windows
 ```bash
 # Проверить использование GPU
 nvidia-smi
@@ -279,10 +471,34 @@ nvidia-smi
 ./RCKangarooClient -server http://server:8080 -gpu 0 # только один GPU для теста
 ```
 
+#### Windows специфично
+```cmd
+# Проверить энергосбережение
+powercfg /list
+powercfg /setactive SCHEME_MIN  # Максимальная производительность
+
+# Проверить тепловой троттлинг
+nvidia-smi -q -d TEMPERATURE
+```
+
 ### Потеря точек
 - Увеличить значение DP битов
 - Проверить стабильность сети
 - Мониторить логи сервера
+
+### Проблемы с файрволом Windows
+
+#### Разрешить клиенту сетевые подключения
+```cmd
+# Добавить исключение в файрвол
+netsh advfirewall firewall add rule name="RCKangarooClient" dir=out action=allow program="C:\path\to\RCKangarooClient.exe"
+```
+
+#### Разрешить серверу входящие подключения
+```cmd
+# Для Python сервера
+netsh advfirewall firewall add rule name="Python Server" dir=in action=allow program="C:\Python39\python.exe" protocol=TCP localport=8080
+```
 
 ## Безопасность
 
