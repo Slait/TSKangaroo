@@ -1,0 +1,5 @@
+flask>=2.3.0
+sqlite3
+dataclasses
+typing
+argparse
