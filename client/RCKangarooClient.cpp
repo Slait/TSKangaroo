@@ -555,7 +555,7 @@ bool SolvePoint(EcPoint PntToSolve, int Range, int DP, EcInt* pk_res)
     printf("Point solved, K: %.3f (with DP and GPU overheads)\r\n", exp_k);
 
     char str[1000];
-    gPrivKey.GetHex(str);
+    gPrivKey.GetHexStr(str);
     printf("\r\n\r\nPRIVATE KEY: %s\r\n", str);
 
     FILE* f = fopen("RESULTS.TXT", "a");
@@ -627,7 +627,7 @@ bool ParseCommandLine(int argc, char* argv[])
                 printf("Missing public key\r\n");
                 return false;
             }
-            if (!gPubKey.SetHex(argv[i + 1])) {
+            if (!gPubKey.SetHexStr(argv[i + 1])) {
                 printf("Invalid public key\r\n");
                 return false;
             }
@@ -637,7 +637,7 @@ bool ParseCommandLine(int argc, char* argv[])
                 printf("Missing start offset\r\n");
                 return false;
             }
-            if (!gStart.SetHex(argv[i + 1])) {
+            if (!gStart.SetHexStr(argv[i + 1])) {
                 printf("Invalid start offset\r\n");
                 return false;
             }
@@ -656,17 +656,30 @@ bool ParseCommandLine(int argc, char* argv[])
                 // Range format: start:end
                 *colon = '\0';
                 EcInt start_range, end_range;
-                if (!start_range.SetHex(range_str) || !end_range.SetHex(colon + 1)) {
+                if (!start_range.SetHexStr(range_str) || !end_range.SetHexStr(colon + 1)) {
                     printf("Invalid range format\r\n");
                     return false;
                 }
                 gStart = start_range;
                 gStartSet = true;
                 
-                // Calculate bit range
+                // Calculate bit range - simplified bit counting
                 EcInt diff = end_range;
                 diff.Sub(start_range);
-                gRange = diff.GetBitLength();
+                // Simplified bit length calculation
+                int bit_len = 0;
+                for (int j = 4; j >= 0; j--) {
+                    if (diff.data[j] != 0) {
+                        bit_len = j * 64;
+                        u64 val = diff.data[j];
+                        while (val) {
+                            bit_len++;
+                            val >>= 1;
+                        }
+                        break;
+                    }
+                }
+                gRange = bit_len;
             } else {
                 // Bit range format
                 gRange = atoi(argv[i + 1]);
@@ -717,7 +730,15 @@ bool ParseCommandLine(int argc, char* argv[])
         }
     } else {
         // Non-server mode validation
-        if (!gPubKey.IsSet()) {
+        // Check if public key is set (simplified check)
+        bool pubkey_set = false;
+        for (int j = 0; j < 4; j++) {
+            if (gPubKey.x.data[j] != 0 || gPubKey.y.data[j] != 0) {
+                pubkey_set = true;
+                break;
+            }
+        }
+        if (!pubkey_set) {
             IsBench = true;
             return true;
         }
@@ -822,13 +843,13 @@ int main(int argc, char* argv[])
 
             // Parse work assignment
             EcPoint pubkey;
-            if (!pubkey.SetHex(gCurrentWork->pubkey)) {
+            if (!pubkey.SetHexStr(gCurrentWork->pubkey.c_str())) {
                 printf("Invalid public key from server\r\n");
                 continue;
             }
 
             EcInt start_offset;
-            if (!start_offset.SetHex(gCurrentWork->start_range)) {
+            if (!start_offset.SetHexStr(gCurrentWork->start_range.c_str())) {
                 printf("Invalid start range from server\r\n");
                 continue;
             }
@@ -859,14 +880,17 @@ int main(int argc, char* argv[])
             // Benchmark mode
             gRange = 78;
             gDP = 16;
-            gPubKey.RndPoint();
+            // Generate random public key for benchmark
+            EcInt random_key;
+            random_key.RndBits(gRange);
+            gPubKey = Ec::MultiplyG(random_key);
             gStart.Set(1);
             gStart.ShiftLeft(gRange - 1);
         }
 
         printf("Start Range: ");
         char str[1000];
-        gStart.GetHex(str);
+        gStart.GetHexStr(str);
         printf("%s\r\n", str);
 
         EcInt end_range = gStart;
@@ -874,7 +898,7 @@ int main(int argc, char* argv[])
         range_size.Set(1);
         range_size.ShiftLeft(gRange);
         end_range.Add(range_size);
-        end_range.GetHex(str);
+        end_range.GetHexStr(str);
         printf("End   Range: %s\r\n", str);
         printf("Bits: %d\r\n", gRange);
 

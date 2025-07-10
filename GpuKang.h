@@ -52,7 +52,6 @@ private:
 
 	void GenerateRndDistances();
 	bool Start();
-	void Release();
 #ifdef DEBUG_MODE
 	int Dbg_CheckKangs();
 #endif
@@ -68,6 +67,7 @@ public:
 	bool Prepare(EcPoint _PntToSolve, int _Range, int _DP, EcJMP* _EcJumps1, EcJMP* _EcJumps2, EcJMP* _EcJumps3);
 	void Stop();
 	void Execute();
+	void Release();
 
 	u32 dbg[256];
 

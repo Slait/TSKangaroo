@@ -194,6 +194,15 @@ cd client\x64\Release
 RCKangarooClient.exe -server http://localhost:8080
 ```
 
+##### Исправления совместимости
+
+Код клиента был адаптирован для совместимости с оригинальными классами RCKangaroo:
+- Исправлены имена методов (`GetHex` → `GetHexStr`, `SetHex` → `SetHexStr`)
+- Реализованы отсутствующие методы (`GetBitLength`, `IsSet`, `RndPoint`)
+- Сделан публичным метод `Release()` в классе `RCGpuKang`
+
+Подробности: `client/COMPILATION_FIXES.md`
+
 ### Настройка поиска
 
 Перед запуском клиентов необходимо настроить сервер:
@@ -458,6 +467,36 @@ nvcc fatal: Cannot find compiler 'cl.exe'
 2. Или добавьте MSVC в PATH:
    ```cmd
    call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+   ```
+
+#### Ошибки совместимости с оригинальным кодом
+
+```
+error C2039: "GetHex": не является членом "EcInt"
+error C2039: "SetHex": не является членом "EcPoint"
+error C2248: RCGpuKang::Release: невозможно обратиться к private член
+```
+
+**Решение:**
+Эти ошибки уже исправлены в текущей версии клиента. Если вы получаете эти ошибки:
+
+1. **Убедитесь, что используете исправленную версию:**
+   - `client/RCKangarooClient.cpp` (исправленная версия)
+   - `GpuKang.h` (с публичным методом Release)
+
+2. **Если редактировали код вручную**, примените исправления:
+   ```cpp
+   // Замените:
+   gPrivKey.GetHex(str);        // на: gPrivKey.GetHexStr(str);
+   gPubKey.SetHex(argv[i]);     // на: gPubKey.SetHexStr(argv[i]);
+   
+   // В GpuKang.h переместите в public:
+   void Release();
+   ```
+
+3. **Проверьте документацию исправлений:**
+   ```
+   client/COMPILATION_FIXES.md
    ```
 
 ### Низкая производительность
